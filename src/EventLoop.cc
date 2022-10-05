@@ -232,6 +232,9 @@ private:
         callback(buf, readed, nullptr);
       }
     }
+    if (closedByPeer) {
+      close(fd);
+    }
     delete[] buf;
   }
 
