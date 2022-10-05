@@ -1,4 +1,17 @@
-#include <./asynclib>
+#pragma once
+
+#include <AsyncServerSocket.cc>
+#include <asynclib>
+#include <errno.h>
+#include <fcntl.h>
+#include <functional>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 class EventLoop {
   using EventHandler = std::function<void(
@@ -88,6 +101,8 @@ public:
 
   void run() {
     while (true) {
+      /* TODO: Timer Heap phase */
+      /* TODO: Event Queue phase */
       /* I/O phase */
       int howManyTriggered = epoll_wait(
           this->epollFd, this->events, this->maxEventsCount,
@@ -187,6 +202,7 @@ private:
   void readAndCall(FileDescriptor fd) {
     uint32_t readed = 0;
     uint32_t currentLength = 1024;
+    bool closedByPeer = false;
     char *buf = new char[currentLength];
     while (true) {
       int count = SocketLib::read(fd, buf + readed, currentLength - readed);
@@ -194,10 +210,12 @@ private:
         /* we have read all data */
         if (errno != EAGAIN) {
           /* TODO: remote has closed the connection. */
+          closedByPeer = true;
         }
         break;
       } else if (count == 0) {
         /* TODO: remote has closed the connection. */
+        closedByPeer = true;
         break;
       }
       readed += count;

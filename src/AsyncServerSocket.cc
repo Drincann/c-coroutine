@@ -1,4 +1,16 @@
-#include <./asynclib>
+#pragma once
+
+#include <asynclib>
+#include <errno.h>
+#include <fcntl.h>
+#include <functional>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 class AsyncServerSocket {
 public:
