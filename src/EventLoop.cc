@@ -53,6 +53,20 @@ public:
     return true;
   }
 
+  bool registClient(FileDescriptor &socket) {
+    // the reason why we not store the file descriptor in map is that we can
+    // find the relation in this->fdClientToServerMap, in fact the events of
+    // server socket triggered by client socket
+    epoll_event event = {
+        .events = EPOLLIN | EPOLLOUT | EPOLLET,
+        .data = {.fd = socket},
+    };
+    if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, socket, &event) < 0) {
+      return false;
+    }
+    return true;
+  }
+
   bool unregist(AsyncServerSocket &socket, EventLoop::Event eventType) {
     if (has(fdEventMap, socket.getSocketFd())) {
       if (has(fdEventMap[socket.getSocketFd()], eventType)) {
@@ -155,7 +169,9 @@ private:
   int epollFd = -1;
   uint maxEventsCount;
   epoll_event *events;
-  // TODO: Refactoring to server socket to client socket mapping
+  // client socket -> server socket
+  std::unordered_map<FileDescriptor, FileDescriptor> fdClientToServerMap;
+  // server socket -> handlers map
   std::unordered_map<
       FileDescriptor,
       std::unordered_map<EventLoop::Event, std::vector<EventHandler>>>
@@ -194,7 +210,7 @@ private:
       }
     }
     if (readed > 0) {
-      for (auto callback : fdEventMap[fd][Event::READ]) {
+      for (auto callback : fdEventMap[fdClientToServerMap[fd]][Event::READ]) {
         callback(buf, readed, nullptr);
       }
     }
