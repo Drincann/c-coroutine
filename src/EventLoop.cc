@@ -113,7 +113,7 @@ public:
         FileDescriptor fdTriggered = this->events[i].data.fd;
 
         /* try accept connection on the file descriptor triggered */
-        if (has(fdEventMap, fdTriggered))
+        if (has(fdEventMap, fdTriggered)) {
           while (1) {
             sockaddr clientAddr;
             socklen_t clientAddrLen = sizeof(clientAddr);
@@ -146,6 +146,8 @@ public:
               continue;
             }
           }
+          continue;
+        }
 
         int eventsTriggered = this->events[i].events;
         FileDescriptor fdServer = fdTriggered;
@@ -255,6 +257,7 @@ private:
         }
         written += count;
       }
+      close(fd);
     };
   }
 };
