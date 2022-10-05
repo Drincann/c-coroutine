@@ -22,7 +22,6 @@ int main(int argc, char *argv[]) {
                     "HTTP/1.1 200 OK\n\n<h1 style=\"text-align: center; "
                     "padding-top: 100px;\">Hello Coroutines!</h1>";
                 write(buf, strlen(buf));
-                delete[] buf;
               });
   loop.run();
   return EXIT_SUCCESS;
