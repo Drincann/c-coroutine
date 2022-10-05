@@ -59,6 +59,7 @@ EventLoop::closureWriteTo(FileDescriptor fd) {
       }
       written += count;
     }
+    // TODO: read event will not be triggered if close before read.
     close(fd);
   };
 }
