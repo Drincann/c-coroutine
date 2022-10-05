@@ -84,53 +84,66 @@ public:
         FileDescriptor fdTriggered = this->events[i].data.fd;
 
         /* try accept connection on the file descriptor triggered */
-        while (1) {
-          sockaddr clientAddr;
-          socklen_t clientAddrLen = sizeof(clientAddr);
-          FileDescriptor clientSocketFd = -1;
-          char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+        if (has(fdEventMap, fdTriggered))
+          while (1) {
+            sockaddr clientAddr;
+            socklen_t clientAddrLen = sizeof(clientAddr);
+            FileDescriptor clientSocketFd = -1;
+            char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
 
-          clientSocketFd = accept(fdTriggered, &clientAddr, &clientAddrLen);
-          if (clientSocketFd == -1) {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-              /* We have processed all incoming
-                 connections. */
-              break;
+            clientSocketFd = accept(fdTriggered, &clientAddr, &clientAddrLen);
+            if (clientSocketFd == -1) {
+              if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+                /* We have processed all incoming
+                   connections. */
+                break;
+              } else {
+                perror("accept");
+                break;
+              }
+            }
+
+            /* Make the incoming socket non-blocking and add it to the epoll */
+            if (AsyncServerSocket::makeNonBlocking(clientSocketFd) == -1) {
+              close(clientSocketFd);
+              continue;
+            }
+
+            if (this->registClient(clientSocketFd)) {
+              // we store the relation for emitting event on server socket
+              fdClientToServerMap[clientSocketFd] = fdTriggered;
             } else {
-              perror("accept");
-              break;
+              close(clientSocketFd);
+              continue;
             }
           }
 
-          /* Make the incoming socket non-blocking and add it to the epoll */
-          if (AsyncServerSocket::makeNonBlocking(clientSocketFd) == -1) {
-            close(clientSocketFd);
-            continue;
-          }
-
-          // if(this->regist())
+        int eventsTriggered = this->events[i].events;
+        FileDescriptor fdServer = fdTriggered;
+        if (has(fdClientToServerMap, fdTriggered)) {
+          fdServer = fdClientToServerMap[fdTriggered];
         }
 
-        int eventsTriggered = this->events[i].events;
         if (eventsTriggered & EPOLLERR || eventsTriggered & EPOLLHUP) {
-          if (has(fdEventMap, fdTriggered) &&
-              has(fdEventMap[fdTriggered], Event::ERROR)) {
-            for (auto callback : fdEventMap[fdTriggered][Event::ERROR]) {
+          if (has(fdEventMap, fdServer) &&
+              has(fdEventMap[fdServer], Event::ERROR)) {
+            for (auto callback : fdEventMap[fdServer][Event::ERROR]) {
               callback(nullptr, 0, nullptr);
             }
           }
         }
         if (eventsTriggered & EPOLLIN) {
-          if (has(fdEventMap, fdTriggered) &&
-              has(fdEventMap[fdTriggered], Event::READ)) {
-            this->readAndCall(fdTriggered);
+          if (has(fdEventMap, fdServer) &&
+              has(fdEventMap[fdServer], Event::READ)) {
+            this->readAndCall(fdTriggered /* client socket */);
           }
         }
         if (eventsTriggered & EPOLLOUT) {
-          if (has(fdEventMap, fdTriggered) &&
-              has(fdEventMap[fdTriggered], Event::WRITE)) {
-            for (auto callback : fdEventMap[fdTriggered][Event::WRITE]) {
-              callback(nullptr, 0, this->closureWriteTo(fdTriggered));
+          if (has(fdEventMap, fdServer) &&
+              has(fdEventMap[fdServer], Event::WRITE)) {
+            for (auto callback : fdEventMap[fdServer][Event::WRITE]) {
+              callback(nullptr, 0,
+                       this->closureWriteTo(fdTriggered /* client socket */));
             }
           }
         }
