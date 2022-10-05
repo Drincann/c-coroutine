@@ -162,12 +162,13 @@ private:
     while (true) {
       int count = SocketLib::read(fd, buf + readed, currentLength - readed);
       if (count == -1) {
-        if (errno == EAGAIN) {
-          /* we have read all data */
-          break;
+        /* we have read all data */
+        if (errno != EAGAIN) {
+          /* TODO: remote has closed the connection. */
         }
+        break;
       } else if (count == 0) {
-        /* remote has closed the connection. */
+        /* TODO: remote has closed the connection. */
         break;
       }
       readed += count;
