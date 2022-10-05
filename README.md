@@ -18,9 +18,9 @@ int main(int argc, char *argv[]) {
               [&](auto buffer, auto len, auto _) { printf(buffer); });
   loop.regist(asyncSocket, EventLoop::Event::WRITE,
               [&](auto buffer, auto len, auto write) {
-                char *buf = new char[1024]{
+                const char *buf =
                     "HTTP/1.1 200 OK\n\n<h1 style=\"text-align: center; "
-                    "padding-top: 100px;\">Hello Coroutines!</h1>"};
+                    "padding-top: 100px;\">Hello Coroutines!</h1>";
                 write(buf, strlen(buf));
                 delete[] buf;
               });
